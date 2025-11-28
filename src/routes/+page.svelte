@@ -2,9 +2,9 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 
-	type Mode = 'reverse' | 'forward';
+	type Mode = 'out the door' | 'selling';
 
-	let mode: Mode = 'reverse';
+	let mode: Mode = 'out the door';
 	let otdPrice: number | undefined;
 	let vehiclePrice: number | undefined;
 	let taxRate: number | undefined;
@@ -41,7 +41,13 @@
 		if (savedStateJSON) {
 			try {
 				const savedState = JSON.parse(savedStateJSON);
-				mode = savedState.mode || 'reverse';
+				
+				// Handle migration from old mode names
+				let savedMode = savedState.mode;
+				if (savedMode === 'reverse') savedMode = 'out the door';
+				if (savedMode === 'forward') savedMode = 'selling';
+
+				mode = savedMode || 'out the door';
 				otdPrice = savedState.otdPrice;
 				vehiclePrice = savedState.vehiclePrice;
 				taxRate = savedState.taxRate;
@@ -62,7 +68,7 @@
 	});
 
 	function setDefaultValues() {
-		mode = 'reverse';
+		mode = 'out the door';
 		otdPrice = 35000;
 		taxRate = 7;
 		docFee = 499;
@@ -85,7 +91,7 @@
 	// Main calculation logic
 	$: {
 		if (hydrated) {
-			if (mode === 'reverse') {
+			if (mode === 'out the door') {
 				const calculatedVehiclePrice = ((otdPrice || 0) - totalFees) / (1 + (taxRate || 0) / 100);
 				vehiclePrice = Math.round(calculatedVehiclePrice * 100) / 100;
 			} else {
@@ -126,7 +132,7 @@
 	}
 
 	function toggleMode() {
-		mode = mode === 'reverse' ? 'forward' : 'reverse';
+		mode = mode === 'out the door' ? 'selling' : 'out the door';
 	}
 </script>
 
@@ -150,16 +156,16 @@
 			</div>
 			<div class="controls">
 				<div class="mode-switcher">
-					<span>Reverse</span>
+					<span>Out the Door</span>
 					<button
 						class="switch"
-						class:forward={mode === 'forward'}
+						class:selling={mode === 'selling'}
 						on:click={toggleMode}
 						aria-label="Toggle calculation mode"
 					>
 						<span class="handle" />
 					</button>
-					<span>Forward</span>
+					<span>Selling</span>
 				</div>
 				<button on:click={reset} class="reset-btn" aria-label="Reset form">
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23 4V10H17" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20V14H7" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9.49001C4.79373 5.92305 8.52841 3.50155 12.5593 4.07293C16.5902 4.6443 19.8951 7.82098 20.4883 11.841C21.0815 15.861 18.6322 19.5765 15 20.49" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.49 14.5C19.2063 18.067 15.4716 20.4885 11.4407 19.9171C7.4098 19.3457 4.10488 16.169 3.51172 12.149C2.91855 8.12902 5.36781 4.41353 9.00001 3.51001" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -171,8 +177,8 @@
 			<div class="left-column">
 				<section
 					class="price-section"
-					class:active-input={mode === 'reverse'}
-					class:calculated-result={mode === 'forward'}
+					class:active-input={mode === 'out the door'}
+					class:calculated-result={mode === 'selling'}
 				>
 					<label for="otdPrice">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 16V12" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8H12.01" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -180,22 +186,22 @@
 					</label>
 					<div class="input-container">
 						<span class="adornment">$</span>
-						<input id="otdPrice" type="number" bind:value={otdPrice} placeholder="35,000" readonly={mode === 'forward'} />
+						<input id="otdPrice" type="number" bind:value={otdPrice} placeholder="35,000" readonly={mode === 'selling'} />
 					</div>
 					<p class="description">This is the final amount you want to write the check for.</p>
 				</section>
 
 				<section
 					class="price-section"
-					class:active-input={mode === 'forward'}
-					class:calculated-result={mode === 'reverse'}
+					class:active-input={mode === 'selling'}
+					class:calculated-result={mode === 'out the door'}
 				>
 					<label for="vehiclePrice">
 						Vehicle Selling Price
 					</label>
 					<div class="input-container">
 						<span class="adornment">$</span>
-						<input id="vehiclePrice" type="number" bind:value={vehiclePrice} placeholder="31,916.82" readonly={mode === 'reverse'} />
+						<input id="vehiclePrice" type="number" bind:value={vehiclePrice} placeholder="31,916.82" readonly={mode === 'out the door'} />
 					</div>
 					<p class="description">This is the negotiated price of the car before any fees or taxes.</p>
 				</section>
@@ -273,7 +279,7 @@
 
 			<div class="right-column">
 				<div class="target-price-card">
-					{#if mode === 'reverse'}
+					{#if mode === 'out the door'}
 						<p>TARGET VEHICLE PRICE</p>
 						<h2>{formatCurrency(vehiclePrice)}</h2>
 						<span>Offer this amount to hit your goal.</span>
@@ -404,7 +410,7 @@
 		transition: transform 0.2s ease-in-out;
 		transform: translateX(0);
 	}
-	.mode-switcher .switch.forward .handle {
+	.mode-switcher .switch.selling .handle {
 		transform: translateX(20px);
 	}
 
@@ -631,7 +637,6 @@
 		background-color: #f9fafb;
 		border-radius: 1rem;
 		padding: 2rem;
-		justify-content: space-between;
 	}
 
 	.target-price-card {
