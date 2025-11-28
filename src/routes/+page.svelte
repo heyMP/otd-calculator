@@ -2,7 +2,11 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 
+	type Mode = 'reverse' | 'forward';
+
+	let mode: Mode = 'reverse';
 	let otdPrice: number | undefined;
+	let vehiclePrice: number | undefined;
 	let taxRate: number | undefined;
 	let docFee: number | undefined;
 	let titleFee: number | undefined;
@@ -17,7 +21,9 @@
 	// Save state to localStorage whenever it changes
 	$: if (browser && hydrated) {
 		const state = {
+			mode,
 			otdPrice,
+			vehiclePrice,
 			taxRate,
 			docFee,
 			titleFee,
@@ -35,7 +41,9 @@
 		if (savedStateJSON) {
 			try {
 				const savedState = JSON.parse(savedStateJSON);
+				mode = savedState.mode || 'reverse';
 				otdPrice = savedState.otdPrice;
+				vehiclePrice = savedState.vehiclePrice;
 				taxRate = savedState.taxRate;
 				docFee = savedState.docFee;
 				titleFee = savedState.titleFee;
@@ -48,13 +56,13 @@
 				setDefaultValues();
 			}
 		} else {
-			// If no saved state, set defaults
 			setDefaultValues();
 		}
 		hydrated = true;
 	});
 
 	function setDefaultValues() {
+		mode = 'reverse';
 		otdPrice = 35000;
 		taxRate = 7;
 		docFee = 499;
@@ -63,26 +71,38 @@
 		shippingFee = 0;
 		addOnsFee = 0;
 		customFees = [];
+		// vehiclePrice is calculated, so not set here initially
 	}
 
-	$: customFeesTotal = customFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
 	$: totalFees =
 		(docFee || 0) +
 		(titleFee || 0) +
 		(regFee || 0) +
 		(shippingFee || 0) +
 		(addOnsFee || 0) +
-		customFeesTotal;
+		(customFees.reduce((sum, fee) => sum + (fee.amount || 0), 0) || 0);
 
-	$: vehiclePrice = ((otdPrice || 0) - totalFees) / (1 + (taxRate || 0) / 100);
-	$: taxAmount = vehiclePrice * ((taxRate || 0) / 100);
-	$: calculatedOtd = vehiclePrice + taxAmount + totalFees;
+	// Main calculation logic
+	$: {
+		if (hydrated) {
+			if (mode === 'reverse') {
+				const calculatedVehiclePrice = ((otdPrice || 0) - totalFees) / (1 + (taxRate || 0) / 100);
+				vehiclePrice = Math.round(calculatedVehiclePrice * 100) / 100;
+			} else {
+				const currentTaxAmount = (vehiclePrice || 0) * ((taxRate || 0) / 100);
+				const calculatedOtdPrice = (vehiclePrice || 0) + currentTaxAmount + totalFees;
+				otdPrice = Math.round(calculatedOtdPrice * 100) / 100;
+			}
+		}
+	}
+
+	$: taxAmount = (vehiclePrice || 0) * ((taxRate || 0) / 100);
 
 	function formatCurrency(value: number, withPlus = false) {
 		const formatted = new Intl.NumberFormat('en-US', {
 			style: 'currency',
 			currency: 'USD'
-		}).format(value);
+		}).format(value || 0);
 		return withPlus && value > 0 ? `+ ${formatted}` : formatted;
 	}
 
@@ -90,7 +110,7 @@
 		return new Intl.NumberFormat('en-US', {
 			minimumFractionDigits: 2,
 			maximumFractionDigits: 2
-		}).format(value);
+		}).format(value || 0);
 	}
 
 	function addCustomFee() {
@@ -103,6 +123,10 @@
 
 	function reset() {
 		setDefaultValues();
+	}
+
+	function toggleMode() {
+		mode = mode === 'reverse' ? 'forward' : 'reverse';
 	}
 </script>
 
@@ -122,26 +146,60 @@
 		<header class="calculator-header">
 			<div class="title">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.5 2H4.5C3.39543 2 2.5 2.89543 2.5 4V20C2.5 21.1046 3.39543 22 4.5 22H19.5C20.6046 22 21.5 21.1046 21.5 20V4C21.5 2.89543 20.6046 2 19.5 2Z" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 7H16.5" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 12H16.5" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 17H12.5" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-				<h1>OTD Reverse Calc</h1>
+				<h1>OTD Calc</h1>
 			</div>
-			<button on:click={reset} class="reset-btn" aria-label="Reset form">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23 4V10H17" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20V14H7" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9.49001C4.79373 5.92305 8.52841 3.50155 12.5593 4.07293C16.5902 4.6443 19.8951 7.82098 20.4883 11.841C21.0815 15.861 18.6322 19.5765 15 20.49" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.49 14.5C19.2063 18.067 15.4716 20.4885 11.4407 19.9171C7.4098 19.3457 4.10488 16.169 3.51172 12.149C2.91855 8.12902 5.36781 4.41353 9.00001 3.51001" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-			</button>
+			<div class="controls">
+				<div class="mode-switcher">
+					<span>Reverse</span>
+					<button
+						class="switch"
+						class:forward={mode === 'forward'}
+						on:click={toggleMode}
+						aria-label="Toggle calculation mode"
+					>
+						<span class="handle" />
+					</button>
+					<span>Forward</span>
+				</div>
+				<button on:click={reset} class="reset-btn" aria-label="Reset form">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M23 4V10H17" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 20V14H7" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.51 9.49001C4.79373 5.92305 8.52841 3.50155 12.5593 4.07293C16.5902 4.6443 19.8951 7.82098 20.4883 11.841C21.0815 15.861 18.6322 19.5765 15 20.49" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20.49 14.5C19.2063 18.067 15.4716 20.4885 11.4407 19.9171C7.4098 19.3457 4.10488 16.169 3.51172 12.149C2.91855 8.12902 5.36781 4.41353 9.00001 3.51001" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+				</button>
+			</div>
 		</header>
 
 		<div class="calculator-body">
 			<div class="left-column">
-				<section class="otd-target-section">
+				<section
+					class="price-section"
+					class:active-input={mode === 'reverse'}
+					class:calculated-result={mode === 'forward'}
+				>
 					<label for="otdPrice">
 						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 16V12" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8H12.01" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-						Your Target "Out The Door" Price
+						Target "Out The Door" Price
 					</label>
 					<div class="input-container">
 						<span class="adornment">$</span>
-						<input id="otdPrice" type="number" bind:value={otdPrice} placeholder="35,000" />
+						<input id="otdPrice" type="number" bind:value={otdPrice} placeholder="35,000" readonly={mode === 'forward'} />
 					</div>
 					<p class="description">This is the final amount you want to write the check for.</p>
 				</section>
+
+				<section
+					class="price-section"
+					class:active-input={mode === 'forward'}
+					class:calculated-result={mode === 'reverse'}
+				>
+					<label for="vehiclePrice">
+						Vehicle Selling Price
+					</label>
+					<div class="input-container">
+						<span class="adornment">$</span>
+						<input id="vehiclePrice" type="number" bind:value={vehiclePrice} placeholder="31,916.82" readonly={mode === 'reverse'} />
+					</div>
+					<p class="description">This is the negotiated price of the car before any fees or taxes.</p>
+				</section>
+
 
 				<section class="fees-section">
 					<h2>DEALERSHIP FEES & TAXES</h2>
@@ -215,18 +273,24 @@
 
 			<div class="right-column">
 				<div class="target-price-card">
-					<p>TARGET VEHICLE PRICE</p>
-					<h2>{formatCurrency(vehiclePrice || 0)}</h2>
-					<span>Offer this amount to hit your goal.</span>
+					{#if mode === 'reverse'}
+						<p>TARGET VEHICLE PRICE</p>
+						<h2>{formatCurrency(vehiclePrice)}</h2>
+						<span>Offer this amount to hit your goal.</span>
+					{:else}
+						<p>FINAL OUT THE DOOR PRICE</p>
+						<h2>{formatCurrency(otdPrice)}</h2>
+						<span>This is your total estimated cost.</span>
+					{/if}
 				</div>
 				<div class="breakdown">
 					<div class="breakdown-item">
 						<span>Vehicle Selling Price</span>
-						<span>{formatNumber(vehiclePrice || 0)}</span>
+						<span>{formatNumber(vehiclePrice)}</span>
 					</div>
 					<div class="breakdown-item">
 						<span>Sales Tax ({taxRate || 0}%)</span>
-						<span class="positive">{formatCurrency(taxAmount || 0, true)}</span>
+						<span class="positive">{formatCurrency(taxAmount, true)}</span>
 					</div>
 					<div class="breakdown-item">
 						<span>Total Fees</span>
@@ -238,10 +302,6 @@
 						<span>{formatCurrency(otdPrice || 0)}</span>
 					</div>
 				</div>
-
-				<button class="generate-btn">
-					Generate Negotiation Strategy
-				</button>
 			</div>
 		</div>
 	</div>
@@ -311,6 +371,44 @@
 		font-weight: 600;
 	}
 	
+	.controls {
+		display: flex;
+		align-items: center;
+		gap: 1.5rem;
+	}
+
+	.mode-switcher {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		color: var(--text-secondary);
+	}
+	.mode-switcher .switch {
+		background-color: var(--primary-green);
+		border: none;
+		border-radius: 99px;
+		width: 44px;
+		height: 24px;
+		padding: 2px;
+		cursor: pointer;
+		position: relative;
+		transition: background-color 0.2s;
+	}
+	.mode-switcher .switch .handle {
+		display: block;
+		width: 20px;
+		height: 20px;
+		background-color: white;
+		border-radius: 50%;
+		transition: transform 0.2s ease-in-out;
+		transform: translateX(0);
+	}
+	.mode-switcher .switch.forward .handle {
+		transform: translateX(20px);
+	}
+
+
 	.reset-btn {
 		background: none;
 		border: 1px solid var(--border-color);
@@ -380,6 +478,49 @@
 		padding-left: 2rem;
 	}
 
+
+	/* Price Section */
+	.price-section {
+		border: 1px solid transparent;
+		border-radius: 1rem;
+		padding: 1.5rem;
+		transition: all 0.2s ease-in-out;
+	}
+	.price-section.active-input {
+		background-color: var(--light-green-bg);
+		border-color: var(--primary-green);
+	}
+	.price-section.calculated-result {
+		background-color: #f9fafb;
+		opacity: 0.7;
+	}
+	.price-section.calculated-result input {
+		color: var(--text-secondary);
+	}
+	.price-section label {
+		color: var(--primary-green);
+		font-weight: 600;
+	}
+	.price-section.calculated-result label {
+		color: var(--text-secondary);
+	}
+
+	.price-section input {
+		font-size: 2rem;
+		background: transparent;
+		border-color: rgba(5, 150, 105, 0.3);
+		color: var(--text-primary);
+	}
+	.price-section.calculated-result input {
+		font-size: 1.5rem;
+		border-color: transparent;
+	}
+
+	.price-section .description {
+		font-size: 0.875rem;
+		color: var(--text-secondary);
+		margin: 0.5rem 0 0 0;
+	}
 
 	/* OTD Target Section */
 	.otd-target-section {
@@ -544,22 +685,6 @@
 		color: var(--text-primary);
 		font-weight: 700;
 		font-size: 1.125rem;
-	}
-
-	.generate-btn {
-		width: 100%;
-		background-color: #1f2937;
-		color: white;
-		border: none;
-		border-radius: 0.75rem;
-		padding: 1rem;
-		font-size: 1rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-	.generate-btn:hover {
-		background-color: #111827;
 	}
 	
 	@media (max-width: 900px) {
