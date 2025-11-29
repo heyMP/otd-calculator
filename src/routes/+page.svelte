@@ -129,10 +129,6 @@
 		customFees = customFees.filter((_, i) => i !== index);
 	}
 
-	function reset() {
-		setDefaultValues();
-	}
-
 	function toggleMode() {
 		mode = mode === "out the door" ? "selling" : "out the door";
 	}
@@ -200,40 +196,6 @@
 					</button>
 					<span>Selling</span>
 				</div>
-				<button on:click={reset} class="reset-btn" aria-label="Reset form">
-					<svg
-						width="20"
-						height="20"
-						viewBox="0 0 24 24"
-						fill="none"
-						xmlns="http://www.w3.org/2000/svg"
-						><path
-							d="M23 4V10H17"
-							stroke="#6B7280"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/><path
-							d="M1 20V14H7"
-							stroke="#6B7280"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/><path
-							d="M3.51 9.49001C4.79373 5.92305 8.52841 3.50155 12.5593 4.07293C16.5902 4.6443 19.8951 7.82098 20.4883 11.841C21.0815 15.861 18.6322 19.5765 15 20.49"
-							stroke="#6B7280"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/><path
-							d="M20.49 14.5C19.2063 18.067 15.4716 20.4885 11.4407 19.9171C7.4098 19.3457 4.10488 16.169 3.51172 12.149C2.91855 8.12902 5.36781 4.41353 9.00001 3.51001"
-							stroke="#6B7280"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/></svg
-					>
-				</button>
 			</div>
 		</header>
 
@@ -558,21 +520,6 @@
 	}
 	.mode-switcher .switch.selling .handle {
 		transform: translateX(20px);
-	}
-
-	.reset-btn {
-		background: none;
-		border: 1px solid var(--border-color);
-		border-radius: 50%;
-		width: 36px;
-		height: 36px;
-		cursor: pointer;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-	.reset-btn:hover {
-		background-color: #f9fafb;
 	}
 
 	.calculator-body {
